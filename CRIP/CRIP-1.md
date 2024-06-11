@@ -1,74 +1,79 @@
 | proposal | title              | description                   | author                     | discussions-to | status | type        | category | created    | requires |
 |----------|--------------------|-------------------------------|----------------------------|----------------|--------|-------------|----------|------------|----------|
-| CRIP-1   | GitHub Integration | Integration with GitHub API to validate user contributions | John Doe <john.doe@example.com> |                | Draft  | Integration | CRIP     | 2024-06-01 |          |
+| CRIP-1   | Duolingo Integration | Integration with Duolingo API to validate first language learned, total XP, username and from language | Kshitij Jha <jhakshitij.2003@gmail.com> |                | Draft  | Integration | CRIP     | 2024-06-11 |          |
 
 ## Title
 
-GitHub Integration
+Duolingo Integration
 
 ## Introduction
 
-This proposal outlines the integration of GitHub as a data provider for the Catoff-Reclaim integration project. The integration aims to retrieve and process user activity data from GitHub, such as commit history and repository contributions, to be used within the Catoff platform. This will enable users to validate their GitHub contributions and use them for various challenges and verifications on Catoff.
+This proposal outlines the integration of Duolingo as a data provider for the Catoff-Reclaim integration project. The integration aims to retrieve and process user's Total XP, first language learnt, username and from language data from Duolingo, to be used within the Catoff platform. This will enable users to validate their Duolingo XPs, from language and first language learnt, and use them for various challenges and verifications on Catoff.
 
 ## External APIs Needed
 
-- GitHub API: https://docs.github.com/en/rest
+- Duolingo API: https://www.duolingo.com/2017-06-30/
 
 ## Use Cases
 
-1. **User Verification**: Verify the activity of users on GitHub by checking their commit history and contributions.
-2. **Challenge Participation**: Allow users to participate in challenges that require proof of GitHub activity.
-3. **Skill Assessment**: Assess users' coding skills and contributions based on their GitHub activity.
+1. **User Verification**: Verify the XP of users on Duolingo.
+2. **Challenge Participation**: Allow users to participate in challenges that require proof of Duolingo XP.
+3. **Skill Assessment**: Assess users' linguistic skills and dedication based on their Duolingo XP.
 
 ## Data Provider
 
-- **Name**: Github UserName - Fix
-- **Hash Value**: 0x68274d4815b6a7c91170c89d3a8cec3b54f4e21f0faf223e677a9134a31f2b32
+- **Name**: Duolingo UserName - Fix
+- **Hash Value**: 0x6cee0c60289814031f1eca7501fc86263a8b26022d6b2441a56e12525d27cc6d
 
 ## Code Snippet
 
-Below is a code snippet that demonstrates the key parts of the GitHub integration. The full implementation should follow the service file template.
+Below is a code snippet that demonstrates the key parts of the Duolingo integration. The full implementation should follow the service file template.
 
-**`services/githubService.js`**
+**`services/duolingoService.js`**
 
 ```javascript
 const axios = require('axios')
 const { ReclaimServiceResponse } = require('../utils/reclaimServiceResponse')
 
-exports.processGitHubData = async (proof, providerName) => {
-  const githubUsername = JSON.parse(proof[0].claimData.context)
-    .extractedParameters.userName
-  const lastUpdateTimeStamp = proof[0].claimData.timestampS
+exports.processDuolingoData = async (proof, providerName) => {
+    const duolingoUsername = JSON.parse(proof[0].claimData.context)
+        .extractedParameters.userName
+    const lastUpdateTimeStamp = proof[0].claimData.timestampS
 
-  const commitCount = await getUserCommits(githubUsername)
+    const totalXp = await getUserXp(duolingoUsername)
 
-  return new ReclaimServiceResponse(
-    providerName,
-    lastUpdateTimeStamp,
-    githubUsername,
-    commitCount,
-    proof[0]
-  )
+    return new ReclaimServiceResponse(
+        providerName,
+        lastUpdateTimeStamp,
+        duolingoUsername,
+        totalXp,
+        proof[0]
+    )
 }
 
-const getUserCommits = async username => {
-  const daysAgo = 3650 // Approx. 10 years
-  const dateSince = new Date(new Date().setDate(new Date().getDate() - daysAgo))
-    .toISOString()
-    .split('T')[0]
-  const url = `https://api.github.com/search/commits?q=author:${username}+committer-date:>${dateSince}`
-  const githubToken = process.env.RECLAIM_GITHUB_TOKEN
+const getUserXp = async username => {
+    const url = `https://www.duolingo.com/2017-06-30/users?username=${username}`;
+    console.log(url);
+    const headers = {
+        'Authorization': `Basic ${Buffer.from(`${process.env.username}:${process.env.password}`).toString('base64')}`,
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36',
+        'Content-Type': 'application/json'
+    };
+    try {
 
-  const response = await axios.get(url, {
-    headers: {
-      Accept: 'application/vnd.github.cloak-preview',
-      Authorization: `token ${githubToken}`,
-    },
-  })
+        const response = await axios.get(url, { headers })
+        console.log(
+            `Total XP gained by ${username}: ${response.data.users[0].totalXp}`
+        )
+        return response.data.total_count;
+    }
+    catch (error) {
+        console.log("error: ", error);
+        return null;
+    }
 
-  console.log(
-    `Total commits by ${username} in the last 10 years: ${response.data.total_count}`
-  )
-  return response.data.total_count
 }
+
+
 ```
